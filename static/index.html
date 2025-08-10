@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Irys Forum - Decentralized Forum</title>
+    <link rel="stylesheet" href="/styles.css?v=8.1">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+    <script src="/ethers-check.js?v=1.3"></script>
+</head>
+<body>
+
+    <header class="header">
+        <div class="header-content">
+            <h1 class="site-title"><span class="irys-text">IRYS</span> FORUM</h1>
+            
+            <div class="header-actions">
+
+                <div class="wallet-section" id="walletSection">
+                    <button class="connect-wallet-btn" onclick="connectWallet()" id="connectWalletBtn">
+                        Connect
+                    </button>
+                    <div class="wallet-connected" id="walletConnected" style="display: none;">
+                        <span class="wallet-balance" id="walletBalance">Balance: 0 IRYS</span>
+                        <button class="disconnect-btn" onclick="disconnectWallet()">
+                            <i class="fas fa-sign-out-alt"></i>
+                        </button>
+                    </div>
+                </div>
+                
+
+            </div>
+        </div>
+    </header>
+
+
+    <main class="main-container">
+
+        <div class="network-status-bottom">
+            <span class="status-dot offline" id="networkStatus"></span>
+            <span class="status-text" id="networkName">Check the network...</span>
+        </div>
+        
+
+        <div class="left-content">
+
+            <div class="nav-tabs">
+                <button class="nav-tab active" data-view="posts">ALL Posts</button>
+                <button class="nav-tab" data-view="profile">My profile</button>
+                <button class="nav-tab" data-view="my-posts">My feed</button>
+                <button class="nav-tab" data-view="irys">Follows</button>
+                <button class="nav-tab" data-view="recommendations">Daily discover</button>
+                <button class="sidebar-toggle" onclick="toggleSidebar()" title="Switch sidebar">
+                    <i class="fas fa-bars"></i>
+                </button>
+            </div>
+
+
+            <div class="post-compose-section">
+                <h2 class="section-title">Post</h2>
+                
+                <div class="compose-form">
+                    <textarea id="postContent" placeholder="Share your thoughts Use # tags to add tags" class="content-textarea" rows="4"></textarea>
+                    
+                    <!-- Image Upload -->
+                    <div class="media-upload">
+                        <input type="file" id="postImage" accept="image/jpeg,image/jpg,image/png" style="display: none;" onchange="handleImageUpload(this, 'postImagePreview')">
+                        <button class="media-btn" onclick="document.getElementById('postImage').click()">
+                            <i class="fas fa-image"></i> picture
+                        </button>
+                        <div id="postImagePreview" class="image-preview"></div>
+                    </div>
+                    
+                    <div class="compose-footer">
+                        <button class="post-submit-btn" onclick="this.disabled=true; this.innerHTML='<i class=\'fas fa-spinner fa-spin\'></i> 发布中...'; createPost().finally(() => { this.disabled=false; this.innerHTML='<i class=\'fas fa-paper-plane\'></i> 发布帖子'; });">
+                            <i class="fas fa-paper-plane"></i> Post
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+
+            <div id="posts" class="view-section active">
+                <div class="posts-list" id="postsContainer">
+
+                </div>
+            </div>
+
+            <!-- Other views -->
+            <div id="profile" class="view-section" style="display: none;">
+                <div class="profile-container">
+                    <h3 class="section-title">My profile</h3>
+                    
+                    <!-- user information -->
+                    <div class="user-info-card">
+                        <div class="user-avatar-container">
+                            <div class="user-avatar" onclick="triggerAvatarUpload()">
+                                <img id="userAvatarImg" src="" alt="User profile picture" style="display: none;">
+                                <i id="userAvatarIcon" class="fas fa-user-circle"></i>
+                                <div class="avatar-overlay">
+                                    <i class="fas fa-camera"></i>
+                                    <span>Edit picture</picture></span>
+                                </div>
+                                <input type="file" id="avatarUpload" accept="image/jpeg,image/jpg,image/png" style="display: none;" onchange="handleAvatarUpload(event)">
+                            </div>
+                            <button id="editAvatarBtn" class="edit-avatar-btn" onclick="triggerAvatarUpload()" style="display: none;">
+                                <i class="fas fa-camera"></i> Edit picture
+                            </button>
+                        </div>
+                        <div class="user-details">
+                            <div class="user-address" id="profileAddress">Not connected to wallet</div>
+                            <div class="user-stats" id="profileStats">
+                                <span>Posts: 0</span>
+                                <span>Comment: 0</span>
+                                <span>Reputation: 0</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Personal Profile Editor -->
+                    <div class="profile-bio-section">
+                        <div class="bio-header">
+                            <h4>Personal Profile</h4>
+                            <button id="editBioBtn" class="edit-bio-btn" onclick="toggleBioEdit()" style="display: none;">
+                                <i class="fas fa-edit"></i> Edit
+                            </button>
+                        </div>
+                        <div class="bio-display" id="bioDisplay">
+                            <p id="bioText">There is currently no personal profile available. Click the edit button to add your profile...</p>
+                        </div>
+                        <div class="bio-form" id="bioForm" style="display: none;">
+                            <textarea id="bioTextarea" placeholder="Can you introduce yourself..." class="bio-textarea" rows="4" maxlength="500"></textarea>
+                            <div class="bio-actions">
+                                <div class="char-count">
+                                    <span id="bioCharCount">0</span>/500
+                                </div>
+                                <div class="bio-buttons">
+                                    <button class="cancel-bio-btn" onclick="cancelBioEdit()">
+                                        <i class="fas fa-times"></i> Cancel
+                                    </button>
+                                    <button class="save-bio-btn" onclick="saveBioProfile()">
+                                        <i class="fas fa-save"></i> Save
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- User Name Registration -->
+                    <div class="username-section">
+                        <h4>User Name Settings</h4>
+                        <div class="username-form">
+                            <input type="text" id="usernameInput" placeholder="Enter username (3-20 characters)" class="username-input">
+                            <div class="username-actions">
+                                <button class="check-btn" onclick="checkUsernameAvailability()">Check availability</button>
+                                <button class="mint-btn" onclick="registerUsername()" disabled>Mint</button>
+                                <button class="sync-btn" onclick="syncUsername()">status</button>
+                            </div>
+                            <div id="usernameStatus" class="username-status"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="my-posts" class="view-section" style="display: none;">
+                <div class="content-placeholder">
+                    <h3>My posts</h3>
+
+                </div>
+            </div>
+
+            <div id="irys" class="view-section" style="display: none;">
+                <div class="content-placeholder">
+                    <h3>Irys data</h3>
+
+                </div>
+            </div>
+
+            <div id="recommendations" class="view-section" style="display: none;">
+                <div class="recommendations-container">
+                    <div class="recommendations-header">
+                        <h3>🔥 Daily discover</h3>
+                        <div class="refresh-info">
+                            <span id="lastRefreshTime">Loading...</span>
+                            <button class="refresh-btn" onclick="refreshRecommendations()" title="Manually refresh">
+                                <i class="fas fa-sync-alt"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="recommendations-content" id="recommendationsContent">
+                        <div class="loading-container">
+                            <div class="loading-spinner"></div>
+                            <p>Loading today's popular posts...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+
+            <div id="userProfile" class="view-section" style="display: none;">
+                <div class="user-profile-container" id="userProfileContainer">
+
+                </div>
+            </div>
+
+
+            <div id="postDetail" class="view-section" style="display: none;">
+                <div class="post-detail-container" id="postDetailContainer">
+
+                </div>
+            </div>
+        </div>
+
+        <div class="right-sidebar" id="rightSidebar">
+
+            <div class="sidebar-card">
+                <h3 class="card-title">global statistics</h3>
+                <div class="stats-grid">
+                    <div class="stat-item">
+                        <div class="stat-number" id="totalUsers">2</div>
+                        <div class="stat-label">users</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-number" id="totalLikes">2</div>
+                        <div class="stat-label">likes</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-number" id="totalPosts">12</div>
+                        <div class="stat-label">posts</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-number" id="totalComments">14</div>
+                        <div class="stat-label">comments</div>
+                    </div>
+                </div>
+            </div>
+
+
+            <div class="sidebar-card">
+                <h3 class="card-title">most active users</h3>
+                <div class="users-list" id="activeUsersList">
+
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+
+    <div id="messageContainer" class="message-container"></div>
+
+
+    <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
+
+
+            <script src="/app.js?v=6.3"></script>
+</body>
+</html> 
