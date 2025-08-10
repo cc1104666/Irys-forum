@@ -503,7 +503,7 @@ impl ForumService {
                 Ok(comments) => {
                     info!("📊 Retrieved {} comments from database", comments.len());
                     
-                    // 3. 将结果缓存到Redis
+                   
                     if let Some(cache) = &self.cache_service {
                         if let Err(e) = cache.cache_comments(post_id, &comments) {
                             info!("⚠️ Failed to cache comments: {}", e);
@@ -520,14 +520,14 @@ impl ForumService {
             }
         }
         
-        // 回退到内存数据
+        // Fallback to memory data
         let comments = self.comments.lock().unwrap();
         let post_comments: Vec<Comment> = comments
             .values()
             .filter(|comment| comment.post_id == post_id)
             .cloned()
             .collect();
-        info!("📊 从内存获取到 {} 个评论", post_comments.len());
+        info!("📊 Retrieve {} comments from memory", post_comments.len());
         Ok(post_comments)
     }
 
@@ -614,15 +614,15 @@ impl ForumService {
         self.irys_service.upload_data(&request.data, request.tags, &request.address).await
     }
 
-    // 获取活跃用户排行榜
+    // Get active users ranking
     pub async fn get_active_users_ranking(&self, limit: u32) -> Vec<User> {
         
         if let Some(db) = &self.database_service {
             match db.get_active_users_ranking(limit as i64).await {
                 Ok(mut users) => {
-                    info!("📊 从数据库获取到 {} 个活跃用户", users.len());
+                    info!("📊 Retrieved {} active users from database", users.len());
 
-                    // 尝试补全真实用户名：如果 name 为空或是默认别名 user_XXXX，则查询并同步用户名
+                    // Try to complete real username: if name is empty or default alias user_XXXX, query and sync username
                     for user in &mut users {
                         let needs_lookup = match &user.name {
                             None => true,
@@ -643,25 +643,25 @@ impl ForumService {
             }
         }
         
-        // 回退到内存数据
+        // Fallback to memory data
         let users = self.users.lock().unwrap();
         let mut user_list: Vec<User> = users.values().cloned().collect();
         
-        // 按声望排序
+        // Sort by reputation
         user_list.sort_by(|a, b| {
             b.reputation.cmp(&a.reputation)
                 .then(b.posts_count.cmp(&a.posts_count))
                 .then(b.comments_count.cmp(&a.comments_count))
         });
         
-        // 只返回有活动的用户
+        // Only return users with activity
         let mut user_list: Vec<User> = user_list
             .into_iter()
             .filter(|user| user.posts_count > 0 || user.comments_count > 0)
             .take(limit as usize)
             .collect();
 
-        // 同步并补全用户名
+        // Sync and complete username
         for user in &mut user_list {
             let needs_lookup = match &user.name {
                 None => true,
@@ -677,7 +677,7 @@ impl ForumService {
         user_list
     }
 
-    // 获取全局统计数据
+    // Get global stats
     pub async fn get_global_stats(&self) -> GlobalStats {
         
         if let Some(db) = &self.database_service {
@@ -692,7 +692,7 @@ impl ForumService {
             }
         }
         
-        // 回退到内存数据
+        // Fallback to memory data
         let users = self.users.lock().unwrap();
         let posts = self.posts.lock().unwrap();
         let comments = self.comments.lock().unwrap();
@@ -737,22 +737,22 @@ impl ForumService {
         self.irys_service.query_data(address.as_deref(), tags, limit).await
     }
     
-    // 注册用户名
+    // Register username
     pub async fn register_username(&self, address: &str, username: &str) -> Result<bool, Box<dyn std::error::Error>> {
-        // 首先检查链上状态
+        // First check on-chain status
         if let Some(ref blockchain) = self.blockchain_service {
             match blockchain.user_has_username_on_chain(address).await {
                 Ok(true) => {
                     info!("⚠️ User already has a username on-chain: {}", address);
-                    // 如果链上已有用户名，尝试同步到数据库
+                    // If username exists on-chain, try to sync to database
                     if let Some(ref db) = self.database_service {
                         if let Ok(Some(chain_username)) = blockchain.get_username_by_address_on_chain(address).await {
                             info!("📊 Sync on-chain username to database: {} -> {}", address, chain_username);
-                            // 确保用户存在于数据库中
+                            // Ensure user exists in database
                             db.ensure_user_exists(address, &None).await?;
-                            // 更新数据库中的用户名
+                            // Update username in database
                             let _ = db.register_username(address, &chain_username).await;
-                            // 返回成功，因为用户名已经存在且已同步
+                            // Return success because username already exists and is synced
                             return Ok(true);
                         }
                     }
@@ -767,7 +767,7 @@ impl ForumService {
             }
         }
 
-        // 然后进行数据库注册
+        // Then register in database
         if let Some(ref db) = self.database_service {
             match db.register_username(address, username).await {
                 Ok(success) => Ok(success),
@@ -781,13 +781,13 @@ impl ForumService {
         }
     }
     
-    // 检查用户名是否可用
+    // Check if username is available
     pub async fn is_username_available(&self, username: &str) -> Result<bool, Box<dyn std::error::Error>> {
         if let Some(ref db) = self.database_service {
             match db.is_username_available(username).await {
                 Ok(available) => Ok(available),
                 Err(e) => {
-                    info!("⚠️ 数据库检查用户名失败: {}", e);
+                    info!("⚠️ Database check username failed: {}", e);
                     Err(e.into())
                 }
             }
@@ -796,19 +796,19 @@ impl ForumService {
         }
     }
     
-    // 根据地址获取用户名
+    // Get username by address
     pub async fn get_username_by_address(&self, address: &str) -> Result<Option<String>, Box<dyn std::error::Error>> {
-        // 首先从数据库获取
+        // First get from database
         if let Some(ref db) = self.database_service {
             match db.get_username_by_address(address).await {
                 Ok(Some(username)) => Ok(Some(username)),
                 Ok(None) => {
-                    // 数据库中没有，尝试从链上获取
+                    // No username in database, try to get from chain
                     if let Some(ref blockchain) = self.blockchain_service {
                         match blockchain.get_username_by_address_on_chain(address).await {
                             Ok(Some(chain_username)) => {
                                 info!("📊 Fetched username from chain and synced to database: {} -> {}", address, chain_username);
-                                // 同步到数据库
+                                // Sync to database
                                 self.sync_username_from_chain(address).await?;
                                 Ok(Some(chain_username))
                             }
@@ -828,7 +828,7 @@ impl ForumService {
                 }
             }
         } else {
-            // 数据库不可用，尝试从链上获取
+            // Database unavailable, try to get from chain
             if let Some(ref blockchain) = self.blockchain_service {
                 match blockchain.get_username_by_address_on_chain(address).await {
                     Ok(username) => Ok(username),
@@ -843,9 +843,9 @@ impl ForumService {
         }
     }
     
-    // 检查用户是否已注册用户名
+    // Check if user has registered username
     pub async fn user_has_username(&self, address: &str) -> Result<bool, Box<dyn std::error::Error>> {
-        // 首先检查数据库
+        // First check database
         if let Some(ref db) = self.database_service {
             match db.user_has_username(address).await {
                 Ok(has_username) => {
@@ -854,17 +854,17 @@ impl ForumService {
                     }
                 },
                 Err(e) => {
-                    info!("⚠️ 数据库检查用户名状态失败: {}", e);
+                    info!("⚠️ Database check username status failed: {}", e);
                 }
             }
         }
 
-        // 如果数据库中没有，检查链上状态
+        // If database has no username, check on-chain status
         if let Some(ref blockchain) = self.blockchain_service {
             match blockchain.user_has_username_on_chain(address).await {
                 Ok(true) => {
-                    info!("📊 链上发现用户名，同步到数据库: {}", address);
-                    // 同步链上用户名到数据库
+                    info!("📊 Found username on chain, sync to database: {}", address);
+                    // Sync username from chain to database
                     self.sync_username_from_chain(address).await?;
                     Ok(true)
                 }
@@ -879,15 +879,15 @@ impl ForumService {
         }
     }
 
-    // 同步链上用户名到数据库
+    // Sync username from chain to database
     async fn sync_username_from_chain(&self, address: &str) -> Result<(), Box<dyn std::error::Error>> {
         if let Some(ref blockchain) = self.blockchain_service {
             if let Some(ref db) = self.database_service {
                 if let Ok(Some(chain_username)) = blockchain.get_username_by_address_on_chain(address).await {
                     info!("📊 Sync on-chain username to database: {} -> {}", address, chain_username);
-                    // 确保用户存在于数据库中
+                    // Ensure user exists in database
                     db.ensure_user_exists(address, &None).await?;
-                    // 更新数据库中的用户名
+                    // Update username in database
                     let _ = db.register_username(address, &chain_username).await;
                 }
             }
@@ -895,7 +895,7 @@ impl ForumService {
         Ok(())
     }
 
-    // 检查交易是否已被使用
+    // Check if transaction is used
     pub async fn is_transaction_used(&self, tx_hash: &str) -> Result<bool, Box<dyn std::error::Error>> {
         if let Some(database_service) = &self.database_service {
             database_service.is_transaction_used(tx_hash).await
@@ -905,7 +905,7 @@ impl ForumService {
         }
     }
     
-    // 验证区块链发帖交易
+    // Verify blockchain post transaction
     pub async fn verify_blockchain_post_transaction(
         &self, 
         tx_hash: &str, 
@@ -918,7 +918,7 @@ impl ForumService {
         }
     }
     
-    // 验证区块链评论交易
+    // Verify blockchain comment transaction
     pub async fn verify_blockchain_comment_transaction(
         &self, 
         tx_hash: &str, 
@@ -931,13 +931,13 @@ impl ForumService {
         }
     }
     
-    // 带区块链验证的创建帖子
+    // Create post with blockchain verification
     pub async fn create_post_with_verification(
         &self, 
         request: CreatePostRequest,
         verification: crate::blockchain::PostTransactionVerification
     ) -> Result<Post, Box<dyn std::error::Error>> {
-        // 防重复内容检查：检查用户在最近5分钟内是否发布了相同内容的帖子
+    
         if let Some(database_service) = &self.database_service {
             match database_service.check_duplicate_post(&request.author_address, &request.content).await {
                 Ok(true) => {
@@ -956,14 +956,14 @@ impl ForumService {
         let tags = vec!["forum".to_string(), "post".to_string()];
         let author_address = request.author_address.clone();
         
-        // 获取用户的用户名（如果有的话）
+        // Get user's username (if any)
         let author_name = if let Ok(Some(username)) = self.get_username_by_address(&author_address).await {
             Some(username)
         } else {
             request.author_name
         };
         
-        // 上传到Irys
+        // Upload to Irys
         let tx_id = self.irys_service.upload_data(&post_data, tags, &author_address).await?;
         
         let post = Post {
@@ -971,7 +971,7 @@ impl ForumService {
             title: request.title,
             content: request.content,
             author_address: request.author_address.clone(),
-            author_id: None, // 将在数据库存储时填充
+            author_id: None, 
             author_name,
             author_avatar: None,
             created_at: Utc::now(),
@@ -982,21 +982,21 @@ impl ForumService {
             irys_transaction_id: Some(tx_id),
             image: request.image,
             blockchain_post_id: request.blockchain_post_id,
-            is_liked_by_user: false, // 新帖子默认未点赞
-            views: 0, // 新帖子浏览量为0
-            heat_score: None, // 热度分数稍后计算
+            is_liked_by_user: false, 
+            views: 0, // New post views count is 0
+            heat_score: None, // Heat score will be calculated later
         };
         
-                          // 创建帖子并记录交易
+                      
          if let Some(database_service) = &self.database_service {
-             // 先创建帖子
+            
              database_service.create_post(&post).await?;
              
-             // 然后更新区块链交易哈希并记录交易
+            
              if let Some(tx_hash) = &request.blockchain_transaction_hash {
                  database_service.update_post_blockchain_hash(&post.id, tx_hash).await?;
                  
-                 // 记录已使用的交易
+              
                  let block_timestamp = chrono::DateTime::from_timestamp(
                      verification.block_timestamp.as_u64() as i64, 0
                  ).unwrap_or_else(|| Utc::now());
@@ -1010,7 +1010,7 @@ impl ForumService {
                  ).await?;
              }
              
-             // 清除帖子列表缓存
+             
              if let Some(cache) = &self.cache_service {
                  if let Err(e) = cache.invalidate_post_cache() {
                      info!("⚠️ Failed to clear post cache: {}", e);
@@ -1026,13 +1026,13 @@ impl ForumService {
         Ok(post)
     }
     
-    // 带区块链验证的创建评论
+    
     pub async fn add_comment_with_verification(
         &self,
         request: CreateCommentRequest,
         verification: crate::blockchain::CommentTransactionVerification
     ) -> Result<Comment, Box<dyn std::error::Error>> {
-        // 防重复内容检查：检查用户在最近5分钟内是否发布了相同内容的评论
+      
         if let Some(database_service) = &self.database_service {
             match database_service.check_duplicate_comment(&request.author_address, &request.content, &request.post_id).await {
                 Ok(true) => {
@@ -1051,14 +1051,14 @@ impl ForumService {
         let tags = vec!["forum".to_string(), "comment".to_string()];
         let author_address = request.author_address.clone();
         
-        // 获取用户的用户名（如果有的话）
+     
         let author_name = if let Ok(Some(username)) = self.get_username_by_address(&author_address).await {
             Some(username)
         } else {
             request.author_name
         };
         
-        // 上传到Irys
+ 
         let tx_id = self.irys_service.upload_data(&comment_data, tags, &author_address).await?;
         
         let comment = Comment {
@@ -1066,7 +1066,7 @@ impl ForumService {
             post_id: request.post_id.clone(),
             content: request.content.clone(),
             author_address: request.author_address.clone(),
-            author_id: None, // 将在数据库层根据author_address获取
+            author_id: None, 
             author_name: author_name.clone(),
             author_avatar: None,
             created_at: Utc::now(),
@@ -1078,16 +1078,16 @@ impl ForumService {
             is_liked_by_user: false,
         };
         
-                 // 保存评论和交易记录
+               
          if let Some(database_service) = &self.database_service {
-             // 添加评论
+        
              database_service.add_comment(&comment).await?;
              
-             // 更新评论的区块链交易哈希
+          
              if let Some(tx_hash) = &request.blockchain_transaction_hash {
                  database_service.update_comment_blockchain_hash(&comment.id, tx_hash).await?;
                  
-                 // 记录已使用的交易
+             
                  let block_timestamp = chrono::DateTime::from_timestamp(
                      verification.block_timestamp.as_u64() as i64, 0
                  ).unwrap_or_else(|| Utc::now());
@@ -1101,7 +1101,7 @@ impl ForumService {
                  ).await?;
              }
              
-             // 清除相关评论缓存
+         
              if let Some(cache) = &self.cache_service {
                  if let Err(e) = cache.invalidate_comment_cache(&comment.post_id) {
                      info!("⚠️ Failed to clear comment cache: {}", e);
@@ -1117,7 +1117,6 @@ impl ForumService {
         Ok(comment)
     }
     
-    // 获取数据库性能统计
     pub fn get_database_performance(&self) -> Option<serde_json::Value> {
         if let Some(database_service) = &self.database_service {
             Some(database_service.get_database_stats())
@@ -1126,12 +1125,12 @@ impl ForumService {
         }
     }
     
-    // 检查是否有缓存服务
+  
     pub fn has_cache_service(&self) -> bool {
         self.cache_service.is_some()
     }
     
-    // 获取内存统计
+ 
     pub fn get_memory_stats(&self) -> serde_json::Value {
         serde_json::json!({
             "posts_in_memory": self.posts.lock().unwrap().len(),
@@ -1140,19 +1139,19 @@ impl ForumService {
         })
     }
     
-    // 异步创建帖子 - 立即返回任务ID
+    
     pub async fn create_post_async(&self, request: CreatePostRequest) -> Result<String, Box<dyn std::error::Error>> {
         if let Some(async_queue) = &self.async_queue_service {
             if let Some(tx_hash) = request.blockchain_transaction_hash.clone() {
-                // 提交到异步队列
+                // Submit to async queue
                 let task_id = async_queue.submit_post_creation(request, tx_hash).await?;
-                info!("🚀 帖子创建任务已提交到异步队列: {}", task_id);
+                info!("🚀 Post creation task submitted to async queue: {}", task_id);
                 Ok(task_id)
             } else {
-                Err("缺少区块链交易哈希".into())
+                Err("Missing blockchain transaction hash".into())
             }
         } else {
-            // 回退到同步处理
+            // Fallback to sync processing
             self.create_post_with_verification(
                 request,
                 crate::blockchain::PostTransactionVerification {
@@ -1170,19 +1169,19 @@ impl ForumService {
         }
     }
     
-    // 异步创建评论 - 立即返回任务ID
+    // Asynchronous create comment - immediately return task ID
     pub async fn create_comment_async(&self, request: CreateCommentRequest) -> Result<String, Box<dyn std::error::Error>> {
         if let Some(async_queue) = &self.async_queue_service {
             if let Some(tx_hash) = request.blockchain_transaction_hash.clone() {
-                // 提交到异步队列
+                // Submit to async queue
                 let task_id = async_queue.submit_comment_creation(request, tx_hash).await?;
-                info!("🚀 评论创建任务已提交到异步队列: {}", task_id);
+                info!("🚀 Comment creation task submitted to async queue: {}", task_id);
                 Ok(task_id)
             } else {
-                Err("缺少区块链交易哈希".into())
+                Err("Missing blockchain transaction hash".into())
             }
         } else {
-            // 回退到同步处理
+            // Fallback to sync processing
             self.add_comment_with_verification(
                 request,
                 crate::blockchain::CommentTransactionVerification {
@@ -1201,7 +1200,7 @@ impl ForumService {
         }
     }
     
-    // 查询异步任务状态
+    // Query async task status
     pub async fn get_task_status(&self, task_id: &str) -> Option<serde_json::Value> {
         if let Some(async_queue) = &self.async_queue_service {
             if let Some(result) = async_queue.get_task_status(task_id).await {
@@ -1220,9 +1219,9 @@ impl ForumService {
         }
     }
     
-    // 点赞评论
+    // Like comment
     pub async fn like_comment(&self, comment_id: &str, user_address: &str) -> Result<(u32, bool), Box<dyn std::error::Error + Send + Sync>> {
-        // 调用数据库服务更新点赞数
+        // Call database service to update like count
         if let Some(db) = &self.database_service {
             db.like_comment(comment_id, user_address).await
                 .map_err(|e| Box::new(e) as Box<dyn std::error::Error + Send + Sync>)
@@ -1231,12 +1230,12 @@ impl ForumService {
         }
     }
     
-    // 获取带点赞状态的评论列表
+    // Get comments with like status
     pub async fn get_comments_with_like_status(&self, post_id: &str, user_address: Option<&str>) -> Result<Vec<Comment>, Box<dyn std::error::Error>> {
         if let Some(db) = &self.database_service {
             match db.get_comments_by_post_id(post_id).await {
                 Ok(mut comments) => {
-                    // 如果提供了用户地址，检查每个评论的点赞状态
+                    // If user address is provided, check like status for each comment
                     if let Some(user_addr) = user_address {
                         for comment in &mut comments {
                             if let Ok(is_liked) = db.check_comment_liked(&comment.id, user_addr).await {
@@ -1259,12 +1258,12 @@ impl ForumService {
         }
     }
 
-    // 获取带点赞状态的评论列表（分页版本）
+    // Get comments with like status (paginated version)
     pub async fn get_comments_with_like_status_paginated(&self, post_id: &str, user_address: Option<&str>, limit: u32, offset: u32) -> Result<Vec<Comment>, Box<dyn std::error::Error>> {
         if let Some(db) = &self.database_service {
             match db.get_comments_by_post_id_paginated(post_id, limit, offset).await {
                 Ok(mut comments) => {
-                    // 如果提供了用户地址，检查每个评论的点赞状态
+                    // If user address is provided, check like status for each comment
                     if let Some(user_addr) = user_address {
                         for comment in &mut comments {
                             if let Ok(is_liked) = db.check_comment_liked(&comment.id, user_addr).await {
@@ -1277,17 +1276,17 @@ impl ForumService {
                 Err(e) => Err(Box::new(e))
             }
         } else {
-           
+            // Simple pagination
             let comments_map = self.comments.lock().unwrap();
             let mut comments: Vec<Comment> = comments_map.values()
                 .filter(|comment| comment.post_id == post_id)
                 .cloned()
                 .collect();
             
-            // 按时间排序
+            // Sort by time
             comments.sort_by(|a, b| a.created_at.cmp(&b.created_at));
             
-            // 应用分页
+            // Apply pagination
             let start = offset as usize;
             let end = (start + limit as usize).min(comments.len());
             let paginated_comments = if start < comments.len() {
@@ -1300,13 +1299,13 @@ impl ForumService {
         }
     }
     
-    // 获取用户自己的帖子
+    // Get user's own posts
     pub async fn get_user_posts(&self, user_address: &str, limit: u32, offset: u32) -> Result<Vec<Post>, Box<dyn std::error::Error>> {
-        // 1. 优先从数据库获取
+        // 1. First get from database
         if let Some(db) = &self.database_service {
             match db.get_posts_by_user(user_address, limit, offset).await {
                 Ok(posts) => {
-                    info!("📊 从数据库获取用户帖子: {} (数量: {})", user_address, posts.len());
+                    info!("📊 Get user posts from database: {} (count: {})", user_address, posts.len());
                     return Ok(posts);
                 },
                 Err(e) => {
@@ -1315,7 +1314,7 @@ impl ForumService {
             }
         }
         
-        // 2. 回退到内存数据
+        // 2. Fallback to memory data
         let posts = self.posts.lock().unwrap();
         let mut user_posts: Vec<Post> = posts
             .values()
@@ -1323,10 +1322,10 @@ impl ForumService {
             .cloned()
             .collect();
         
-        // 按创建时间降序排序（最新的在前面）
+            // Sort by creation time (latest first)
         user_posts.sort_by(|a, b| b.created_at.cmp(&a.created_at));
         
-        // 应用分页
+        // Apply pagination
         let start = offset as usize;
         let end = (start + limit as usize).min(user_posts.len());
         let paginated_posts = if start < user_posts.len() {
@@ -1335,37 +1334,37 @@ impl ForumService {
             Vec::new()
         };
         
-        info!("📊 从内存获取用户帖子: {} (数量: {})", user_address, paginated_posts.len());
+        info!("📊 Get user posts from memory: {} (count: {})", user_address, paginated_posts.len());
         Ok(paginated_posts)
     }
 
-    // 获取用户帖子（包含点赞状态）
+    // Get user posts (with like status)
     pub async fn get_user_posts_with_like_status(&self, user_address: &str, limit: u32, offset: u32, request_user_address: Option<&str>) -> Result<Vec<Post>, Box<dyn std::error::Error>> {
-        // 1. 优先从数据库获取
+        // 1. First get from database
         if let Some(db) = &self.database_service {
             match db.get_posts_by_user_with_like_status(user_address, limit, offset, request_user_address).await {
                 Ok(posts) => {
-                    info!("📊 从数据库获取用户帖子(含点赞状态): {} (数量: {})", user_address, posts.len());
+                    info!("📊 Get user posts from database (with like status): {} (count: {})", user_address, posts.len());
                     return Ok(posts);
                 },
                 Err(e) => {
-                    info!("⚠️ 数据库查询失败，回退到无点赞状态: {}", e);
-                    // 回退到不含点赞状态的查询
+                    info!("⚠️ Database query failed, fallback to no like status: {}", e);
+                    // Fallback to query without like status
                     return self.get_user_posts(user_address, limit, offset).await;
                 }
             }
         }
         
-        // 2. 回退到内存数据（不含点赞状态）
+        // 2. Fallback to memory data (without like status)
         self.get_user_posts(user_address, limit, offset).await
     }
 
-    // 根据用户ID获取地址的公共方法
+    // Get user address by ID
     pub async fn get_user_address_by_id(&self, user_id: &str) -> Result<String, Box<dyn std::error::Error>> {
         if let Some(ref db) = self.database_service {
             match db.get_user_address_by_id(user_id).await {
                 Ok(address) => Ok(address),
-                Err(sqlx::Error::RowNotFound) => Err(format!("用户ID {} 不存在", user_id).into()),
+                Err(sqlx::Error::RowNotFound) => Err(format!("User ID {} does not exist", user_id).into()),
                 Err(e) => Err(e.into())
             }
         } else {
@@ -1373,7 +1372,7 @@ impl ForumService {
         }
     }
 
-    // 更新用户头像
+    // Update user avatar
     pub async fn update_user_avatar(&self, user_address: &str, avatar_url: &str) -> Result<(), Box<dyn std::error::Error>> {
         if let Some(db) = &self.database_service {
             db.update_user_avatar(user_address, avatar_url).await?;
@@ -1381,7 +1380,7 @@ impl ForumService {
         Ok(())
     }
 
-    // 更新用户个人简介
+    // Update user bio
     pub async fn update_user_bio(&self, user_address: &str, bio: &str) -> Result<(), Box<dyn std::error::Error>> {
         if let Some(db) = &self.database_service {
             db.update_user_bio(user_address, bio).await?;
@@ -1389,29 +1388,29 @@ impl ForumService {
         Ok(())
     }
 
-    // 获取每日推荐
+    // Get daily recommendations
     pub async fn get_daily_recommendations(&self, user_address: Option<&str>) -> Result<RecommendationResult, Box<dyn std::error::Error>> {
         if let Some(db) = &self.database_service {
-            // 检查是否需要刷新推荐
+            // Check if need to refresh recommendations
             let should_refresh = db.should_refresh_daily_recommendations().await?;
             
             if should_refresh {
-                info!("🔄 开始计算今日热门帖子...");
+                info!("🔄 Start calculating today's hot posts...");
                 
-                // 计算热门帖子
+                // Calculate hot posts
                 let hot_posts = db.calculate_hot_posts().await?;
                 
-                // 更新缓存
+                    // Update cache
                 db.update_daily_recommendations(&hot_posts).await?;
                 
-                info!("✅ 今日推荐已更新，共 {} 个热门帖子", hot_posts.len());
+                info!("✅ Today's recommendations updated, {} hot posts", hot_posts.len());
             }
             
-            // 获取推荐结果
+            // Get recommendation result
             let result = db.get_daily_recommendations(user_address).await?;
             Ok(result)
         } else {
-            // 回退到内存模式，返回空结果
+            // Fallback to memory mode, return empty result
             Ok(RecommendationResult {
                 posts: vec![],
                 last_refresh_time: None,
@@ -1419,30 +1418,30 @@ impl ForumService {
         }
     }
 
-    // 关注系统相关方法
+    // Follow system related methods
     pub async fn follow_user(&self, request: FollowRequest) -> Result<FollowResponse, Box<dyn std::error::Error>> {
         if let Some(ref db) = self.database_service {
             let (follower_addr, following_addr) = if let (Some(follower_addr), Some(following_addr)) = 
                 (request.follower_address.as_deref(), request.following_address.as_deref()) {
-                // 基于地址的操作（向后兼容）
+                // Based on address (backward compatibility)
                 (follower_addr.to_string(), following_addr.to_string())
             } else if let (Some(follower_id), Some(following_id)) = 
                 (request.follower_id.as_deref(), request.following_id.as_deref()) {
-                // 基于ID的操作，需要查询地址
+                // Based on ID, need to query address
                 let follower_addr = self.get_user_address_by_id(follower_id).await?;
                 let following_addr = self.get_user_address_by_id(following_id).await?;
                 (follower_addr, following_addr)
             } else {
-                return Err("需要提供 follower_address 和 following_address，或者 follower_id 和 following_id".into());
+                return Err("Need to provide follower_address and following_address, or follower_id and following_id".into());
             };
                 
             let success = db.follow_user(&follower_addr, &following_addr).await?;
             
             if success {
-                // 获取更新后的关注数据
+                // Get updated follow data
                 let (following_count, followers_count, _) = db.get_follow_counts(&following_addr).await.unwrap_or((0, 0, 0));
                 
-                info!("👥 用户关注成功: {} 关注了 {}", follower_addr, following_addr);
+                info!("👥 User follow success: {} followed {}", follower_addr, following_addr);
                 
                 Ok(FollowResponse {
                     success: true,
@@ -1451,9 +1450,9 @@ impl ForumService {
                     followers_count,
                 })
             } else {
-                info!("⚠️ 用户已经关注: {} -> {}", follower_addr, following_addr);
+                info!("⚠️ User already followed: {} -> {}", follower_addr, following_addr);
                 
-                // 获取当前关注数据
+                // Get current follow data
                 let (following_count, followers_count, _) = db.get_follow_counts(&following_addr).await.unwrap_or((0, 0, 0));
                 
                 Ok(FollowResponse {
@@ -1472,27 +1471,27 @@ impl ForumService {
         if let Some(ref db) = self.database_service {
             let (follower_addr, following_addr) = if let (Some(follower_addr), Some(following_addr)) = 
                 (request.follower_address.as_deref(), request.following_address.as_deref()) {
-                // 基于地址的操作（向后兼容）
+                // Based on address (backward compatibility)
                 (follower_addr.to_string(), following_addr.to_string())
             } else if let (Some(follower_id), Some(following_id)) = 
                 (request.follower_id.as_deref(), request.following_id.as_deref()) {
-                // 基于ID的操作，需要查询地址
+                // Based on ID, need to query address
                 let follower_addr = self.get_user_address_by_id(follower_id).await?;
                 let following_addr = self.get_user_address_by_id(following_id).await?;
                 (follower_addr, following_addr)
             } else {
-                return Err("需要提供 follower_address 和 following_address，或者 follower_id 和 following_id".into());
+                return Err("Need to provide follower_address and following_address, or follower_id and following_id".into());
             };
                 
             let success = db.unfollow_user(&follower_addr, &following_addr).await?;
             
-            // 获取更新后的关注数据
+                    // Get updated follow data
             let (following_count, followers_count, _) = db.get_follow_counts(&following_addr).await.unwrap_or((0, 0, 0));
             
             if success {
-                info!("👥 用户取消关注成功: {} 取消关注了 {}", follower_addr, following_addr);
+                info!("👥 User unfollow success: {} unfollowed {}", follower_addr, following_addr);
             } else {
-                info!("⚠️ 用户未关注: {} -> {}", follower_addr, following_addr);
+                info!("⚠️ User not followed: {} -> {}", follower_addr, following_addr);
             }
             
             Ok(FollowResponse {
@@ -1509,7 +1508,7 @@ impl ForumService {
     pub async fn get_following_list(&self, user_address: &str, limit: u32, offset: u32) -> Result<Vec<UserProfile>, Box<dyn std::error::Error>> {
         if let Some(ref db) = self.database_service {
             let profiles = db.get_following_list(user_address, limit as i64, offset as i64).await?;
-            info!("📋 获取关注列表: {} (数量: {})", user_address, profiles.len());
+            info!("📋 Get following list: {} (count: {})", user_address, profiles.len());
             Ok(profiles)
         } else {
             Err("Database service unavailable".into())
@@ -1519,7 +1518,7 @@ impl ForumService {
     pub async fn get_followers_list(&self, user_address: &str, limit: u32, offset: u32) -> Result<Vec<UserProfile>, Box<dyn std::error::Error>> {
         if let Some(ref db) = self.database_service {
             let profiles = db.get_followers_list(user_address, limit as i64, offset as i64).await?;
-            info!("📋 获取粉丝列表: {} (数量: {})", user_address, profiles.len());
+            info!("📋 Get followers list: {} (count: {})", user_address, profiles.len());
             Ok(profiles)
         } else {
             Err("Database service unavailable".into())
@@ -1529,7 +1528,7 @@ impl ForumService {
     pub async fn get_mutual_follows_list(&self, user_address: &str, limit: u32, offset: u32) -> Result<Vec<UserProfile>, Box<dyn std::error::Error>> {
         if let Some(ref db) = self.database_service {
             let profiles = db.get_mutual_follows_list(user_address, limit as i64, offset as i64).await?;
-            info!("📋 获取朋友列表: {} (数量: {})", user_address, profiles.len());
+            info!("📋 Get mutual follows list: {} (count: {})", user_address, profiles.len());
             Ok(profiles)
         } else {
             Err("Database service unavailable".into())
