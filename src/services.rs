@@ -1277,7 +1277,7 @@ impl ForumService {
                 Err(e) => Err(Box::new(e))
             }
         } else {
-            （简单分页）
+           
             let comments_map = self.comments.lock().unwrap();
             let mut comments: Vec<Comment> = comments_map.values()
                 .filter(|comment| comment.post_id == post_id)
