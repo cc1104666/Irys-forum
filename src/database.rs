@@ -1150,7 +1150,7 @@ impl DatabaseService {
             return Ok(false); 
         }
         
-于数据库中（如果不存在则创建）
+
         self.ensure_user_exists(address, &None).await?;
         
        
