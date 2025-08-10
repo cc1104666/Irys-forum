@@ -159,5 +159,5 @@ Note: Exact routes depend on the router setup in `main.rs`.
 - Optional: introduce an i18n layer (e.g., via `Accept-Language`) for bilingual responses
 
 ## License
-MIT (or update to your preferred license).
+MIT .
 
