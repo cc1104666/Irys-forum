@@ -67,6 +67,7 @@ pub struct CreatePostRequest {
     pub image: Option<String>,
     pub blockchain_transaction_hash: Option<String>,
     pub blockchain_transaction_proof: Option<String>,
+    #[serde(default, deserialize_with = "de_opt_u32")]
     pub blockchain_post_id: Option<u32>,
 }
 
@@ -220,4 +221,32 @@ pub struct UserProfile {
 pub struct RecommendationResult {
     pub posts: Vec<Post>,
     pub last_refresh_time: Option<chrono::DateTime<chrono::Utc>>,
-} 
+}
+
+// Custom deserializer: accept number or numeric string (or null) for Option<u32>
+fn de_opt_u32<'de, D>(deserializer: D) -> Result<Option<u32>, D::Error>
+where
+    D: serde::de::Deserializer<'de>,
+{
+    let opt = Option::<serde_json::Value>::deserialize(deserializer)?;
+    match opt {
+        None | Some(serde_json::Value::Null) => Ok(None),
+        Some(serde_json::Value::Number(n)) => {
+            n.as_u64()
+                .and_then(|v| if v <= u32::MAX as u64 { Some(v as u32) } else { None })
+                .map(Some)
+                .ok_or_else(|| serde::de::Error::custom("invalid u32 number"))
+        }
+        Some(serde_json::Value::String(s)) => {
+            let s = s.trim();
+            if s.is_empty() {
+                Ok(None)
+            } else {
+                s.parse::<u32>()
+                    .map(Some)
+                    .map_err(|_| serde::de::Error::custom("invalid u32 string"))
+            }
+        }
+        Some(_) => Err(serde::de::Error::custom("expected number or string or null")),
+    }
+}
