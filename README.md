@@ -1,6 +1,6 @@
 # Irys Forum
 
-A lightweight Web3-enabled forum backend written in Rust with Actix Web. It supports posting, commenting, likes, user profiles, a social graph (follow/unfollow), daily recommendations, and optional integrations with blockchain and Redis cache. Client-facing messages and logs are in English, with emojis for quick scanning.
+A Web3 forum backend. It supports publishing, commenting, liking, user profiles, social graphs (follow/unfollow), daily recommendations, and optional integration with blockchain and Redis caching. Using interesting forms of content mining to make posts interesting.
 
 ## Key Features
 - Posts and comments with optional on-chain verification (transaction hash check)
