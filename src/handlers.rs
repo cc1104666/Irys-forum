@@ -988,3 +988,33 @@ pub async fn get_daily_recommendations(
         }
     }
 }
+
+// Proxy for Kaito Irys API to avoid CORS issues
+pub async fn get_amplifiers(
+    query: web::Query<HashMap<String, String>>,
+) -> Result<HttpResponse> {
+    let window = query.get("window").map(|s| s.as_str()).unwrap_or("7d");
+
+    info!("Fetching Irys amplifiers data for window: {}", window);
+
+    let url = format!("https://kaito.irys.xyz/api/community-mindshare?window={}", window);
+
+    match reqwest::get(&url).await {
+        Ok(response) => {
+            match response.json::<Value>().await {
+                Ok(data) => {
+                    info!("Successfully fetched amplifiers data");
+                    Ok(HttpResponse::Ok().json(data))
+                }
+                Err(e) => {
+                    error!("Failed to parse amplifiers data: {}", e);
+                    Ok(HttpResponse::InternalServerError().json(ApiResponse::<()>::error("Failed to parse data".to_string())))
+                }
+            }
+        }
+        Err(e) => {
+            error!("Failed to fetch amplifiers data: {}", e);
+            Ok(HttpResponse::InternalServerError().json(ApiResponse::<()>::error("Failed to fetch data".to_string())))
+        }
+    }
+}

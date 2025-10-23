@@ -77,8 +77,10 @@ async fn main() -> std::io::Result<()> {
                     
                     .route("/users/avatar/upload", web::post().to(handlers::upload_avatar))
                     .route("/users/bio/update", web::post().to(handlers::update_bio))
-                    
+
                     .route("/recommendations/daily", web::get().to(handlers::get_daily_recommendations))
+
+                    .route("/amplifiers", web::get().to(handlers::get_amplifiers))
             )
             .service(Files::new("/icon", "./icon"))
             .service(Files::new("/avatars", "./static/avatars"))

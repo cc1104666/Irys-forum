@@ -13,6 +13,207 @@ body {
     min-height: 100vh;
 }
 
+/* Amplifiers Card Styles */
+.amplifiers-card {
+    margin-bottom: 24px;
+}
+
+.amplifiers-tabs {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 16px;
+}
+
+.amp-tab {
+    flex: 1;
+    padding: 6px 12px;
+    background: rgba(0, 212, 170, 0.1);
+    border: 1px solid rgba(0, 212, 170, 0.3);
+    border-radius: 6px;
+    color: #00d4aa;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.amp-tab:hover {
+    background: rgba(0, 212, 170, 0.2);
+}
+
+.amp-tab.active {
+    background: linear-gradient(135deg, #00d4aa 0%, #00b894 100%);
+    color: white;
+    border-color: #00d4aa;
+}
+
+.amplifiers-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.amplifier-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    transition: all 0.2s;
+    cursor: pointer;
+}
+
+.amplifier-item:hover {
+    background: rgba(0, 212, 170, 0.1);
+    border-color: rgba(0, 212, 170, 0.3);
+    transform: translateX(4px);
+}
+
+.amplifier-rank {
+    font-size: 18px;
+    font-weight: 700;
+    min-width: 32px;
+    text-align: center;
+}
+
+.amplifier-rank.top1 { color: #FFD700; }
+.amplifier-rank.top2 { color: #C0C0C0; }
+.amplifier-rank.top3 { color: #CD7F32; }
+
+.amplifier-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.amplifier-name {
+    font-size: 14px;
+    font-weight: 600;
+    color: #e2e8f0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.amplifier-stats {
+    display: flex;
+    gap: 12px;
+    margin-top: 4px;
+    font-size: 11px;
+    color: #94a3b8;
+}
+
+.amplifier-stat {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.amplifier-stat i {
+    font-size: 10px;
+}
+
+.loading-spinner {
+    text-align: center;
+    padding: 20px;
+    color: #94a3b8;
+    font-size: 14px;
+}
+
+.amplifier-search {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 16px;
+}
+
+.amp-search-input {
+    flex: 1;
+    padding: 8px 12px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 6px;
+    color: #e2e8f0;
+    font-size: 13px;
+    outline: none;
+    transition: all 0.2s;
+}
+
+.amp-search-input:focus {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(0, 212, 170, 0.5);
+}
+
+.amp-search-input::placeholder {
+    color: #64748b;
+}
+
+.amp-search-btn {
+    padding: 8px 16px;
+    background: linear-gradient(135deg, #00d4aa 0%, #00b894 100%);
+    border: none;
+    border-radius: 6px;
+    color: white;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.amp-search-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 212, 170, 0.3);
+}
+
+.search-result {
+    margin-bottom: 12px;
+    padding: 12px;
+    background: rgba(0, 212, 170, 0.1);
+    border: 1px solid rgba(0, 212, 170, 0.3);
+    border-radius: 8px;
+    font-size: 13px;
+    display: none;
+}
+
+.search-result.show {
+    display: block;
+}
+
+.search-result.not-found {
+    background: rgba(239, 68, 68, 0.1);
+    border-color: rgba(239, 68, 68, 0.3);
+    color: #fca5a5;
+}
+
+.search-result.found {
+    background: rgba(0, 212, 170, 0.1);
+    border-color: rgba(0, 212, 170, 0.3);
+    color: #00d4aa;
+}
+
+.view-full-link {
+    display: block;
+    margin-top: 16px;
+    padding: 10px;
+    text-align: center;
+    background: rgba(0, 212, 170, 0.1);
+    border: 1px solid rgba(0, 212, 170, 0.3);
+    border-radius: 8px;
+    color: #00d4aa;
+    text-decoration: none;
+    font-size: 13px;
+    font-weight: 600;
+    transition: all 0.2s;
+}
+
+.view-full-link:hover {
+    background: rgba(0, 212, 170, 0.2);
+    transform: translateY(-2px);
+}
+
+.view-full-link i {
+    margin-left: 6px;
+    font-size: 11px;
+}
+
 /*Top title bar*/
 .header {
     background: linear-gradient(135deg, rgba(15, 20, 25, 0.95) 0%, rgba(26, 35, 50, 0.95) 100%);

@@ -4597,4 +4597,148 @@ async function saveBioProfile() {
         saveBioBtn.innerHTML = '<i class="fas fa-save"></i> Save bio';
         saveBioBtn.disabled = false;
     }
-} 
+}
+
+// ============ Irys Amplifiers ============
+let currentAmplifiersWindow = '7d';
+let currentAmplifiersData = null;
+
+async function loadAmplifiers(window = '7d') {
+    const container = document.getElementById('amplifiersList');
+    if (!container) return;
+
+    container.innerHTML = '<div class="loading-spinner">Loading...</div>';
+
+    try {
+        const response = await fetch(`${API_BASE}/amplifiers?window=${window}`);
+        const data = await response.json();
+
+        if (data.community_mindshare && data.community_mindshare.top_1000_yappers) {
+            currentAmplifiersData = data.community_mindshare.top_1000_yappers;
+            const top10 = currentAmplifiersData.slice(0, 10);
+            renderAmplifiers(top10);
+        } else {
+            container.innerHTML = '<div class="loading-spinner">No data</div>';
+        }
+    } catch (error) {
+        console.error('Load amplifiers failed:', error);
+        container.innerHTML = '<div class="loading-spinner">Load failed</div>';
+    }
+}
+
+function renderAmplifiers(amplifiers) {
+    const container = document.getElementById('amplifiersList');
+    if (!container) return;
+
+    container.innerHTML = amplifiers.map((amp, index) => {
+        const rank = index + 1;
+        const rankClass = rank === 1 ? 'top1' : rank === 2 ? 'top2' : rank === 3 ? 'top3' : '';
+        const rankEmoji = rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : rank;
+
+        const impressions = formatNumber(amp.total_impressions);
+        const tweets = amp.tweet_counts || 0;
+        const engagements = amp.total_likes + amp.total_retweets + amp.total_quote_tweets;
+
+        return `
+            <div class="amplifier-item" onclick="window.open('https://twitter.com/${amp.username}', '_blank')">
+                <div class="amplifier-rank ${rankClass}">${rankEmoji}</div>
+                <div class="amplifier-info">
+                    <div class="amplifier-name">${amp.displayname || amp.username}</div>
+                    <div class="amplifier-stats">
+                        <span class="amplifier-stat">
+                            <i class="fas fa-eye"></i> ${impressions}
+                        </span>
+                        <span class="amplifier-stat">
+                            <i class="fas fa-comment"></i> ${tweets}
+                        </span>
+                    </div>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+function formatNumber(num) {
+    if (num >= 1000000) {
+        return (num / 1000000).toFixed(1) + 'M';
+    } else if (num >= 1000) {
+        return (num / 1000).toFixed(1) + 'K';
+    }
+    return num.toString();
+}
+
+// Search amplifier by username
+async function searchAmplifier() {
+    const input = document.getElementById('amplifierSearchInput');
+    const resultDiv = document.getElementById('searchResult');
+
+    if (!input || !resultDiv) return;
+
+    const username = input.value.trim().toLowerCase();
+    if (!username) {
+        resultDiv.classList.remove('show');
+        return;
+    }
+
+    if (!currentAmplifiersData) {
+        resultDiv.className = 'search-result show not-found';
+        resultDiv.innerHTML = 'Please wait for data to load...';
+        return;
+    }
+
+    const found = currentAmplifiersData.find(amp =>
+        amp.username.toLowerCase() === username ||
+        (amp.displayname && amp.displayname.toLowerCase().includes(username))
+    );
+
+    if (found) {
+        const rank = parseInt(found.rank);
+        const impressions = formatNumber(found.total_impressions);
+        const tweets = found.tweet_counts || 0;
+
+        resultDiv.className = 'search-result show found';
+        resultDiv.innerHTML = `
+            <strong>${found.displayname || found.username}</strong><br>
+            Rank: #${rank} | ${impressions} views | ${tweets} tweets
+        `;
+    } else {
+        resultDiv.className = 'search-result show not-found';
+        resultDiv.innerHTML = `Username "${username}" not found in top 1000`;
+    }
+}
+
+// Enter key to search
+document.addEventListener('DOMContentLoaded', function() {
+    const searchInput = document.getElementById('amplifierSearchInput');
+    if (searchInput) {
+        searchInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                searchAmplifier();
+            }
+        });
+    }
+});
+
+// Tab switching
+document.addEventListener('DOMContentLoaded', function() {
+    const tabs = document.querySelectorAll('.amp-tab');
+    tabs.forEach(tab => {
+        tab.addEventListener('click', function() {
+            tabs.forEach(t => t.classList.remove('active'));
+            this.classList.add('active');
+
+            const window = this.dataset.window;
+            currentAmplifiersWindow = window;
+            loadAmplifiers(window);
+
+            // Clear search result
+            const resultDiv = document.getElementById('searchResult');
+            if (resultDiv) {
+                resultDiv.classList.remove('show');
+            }
+        });
+    });
+
+    // Load initial data
+    loadAmplifiers('7d');
+});

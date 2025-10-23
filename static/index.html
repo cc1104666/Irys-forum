@@ -214,6 +214,36 @@
 
         <div class="right-sidebar" id="rightSidebar">
 
+            <!-- Top Irys Amplifiers -->
+            <div class="sidebar-card amplifiers-card">
+                <h3 class="card-title">
+                    🏆 Top Irys Amplifiers
+                </h3>
+                <div class="amplifiers-tabs">
+                    <button class="amp-tab active" data-window="7d">7D</button>
+                    <button class="amp-tab" data-window="30d">30D</button>
+                    <button class="amp-tab" data-window="90d">90D</button>
+                </div>
+
+                <!-- Search Box -->
+                <div class="amplifier-search">
+                    <input type="text" id="amplifierSearchInput" placeholder="Search username..." class="amp-search-input">
+                    <button onclick="searchAmplifier()" class="amp-search-btn">
+                        <i class="fas fa-search"></i>
+                    </button>
+                </div>
+                <div id="searchResult" class="search-result"></div>
+
+                <div class="amplifiers-list" id="amplifiersList">
+                    <div class="loading-spinner">Loading...</div>
+                </div>
+
+                <!-- View Full Link -->
+                <a href="https://kaito.irys.xyz/" target="_blank" class="view-full-link">
+                    View Full Leaderboard <i class="fas fa-external-link-alt"></i>
+                </a>
+            </div>
+
             <div class="sidebar-card">
                 <h3 class="card-title">global statistics</h3>
                 <div class="stats-grid">
